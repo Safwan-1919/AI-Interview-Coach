@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vercel dev",
-    "build": "esbuild index.tsx --bundle --outfile=index.js --jsx=automatic --external:react --external:react-dom"
+    "build": "esbuild index.tsx --bundle --outfile=public/index.js --jsx=automatic --external:react --external:react-dom"
   },
   "dependencies": {
     "@google/genai": "^1.15.0"
