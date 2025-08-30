@@ -1,0 +1,7 @@
+{
+  "name": "AI Interview Coach",
+  "description": "An interactive AI-powered interviewer that asks questions, listens to your voice responses, and provides a satisfaction score with constructive feedback to help you improve your interviewing skills.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
