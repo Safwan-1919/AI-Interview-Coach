@@ -51,6 +51,8 @@ export const useSpeechRecognition = () => {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // Add a ref to track if the user intentionally stopped the recording.
+  const isStoppingRef = useRef(false);
 
   useEffect(() => {
     if (!SpeechRecognition) {
@@ -70,16 +72,40 @@ export const useSpeechRecognition = () => {
           finalTranscript += event.results[i][0].transcript;
         }
       }
-      setTranscript(prev => prev + finalTranscript);
+      // Append the finalized transcript part, ensuring proper spacing.
+      if (finalTranscript) {
+        setTranscript(prev => (prev.trim() ? prev.trim() + ' ' : '') + finalTranscript.trim());
+      }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      // 'no-speech' is a common event on mobile when there's a pause. We don't want to
+      // treat it as a fatal error, as our auto-restart logic will handle it.
+      if (event.error === 'no-speech') {
+        console.warn('Speech recognition stopped due to no speech.');
+        return;
+      }
       setError(event.error);
       console.error('Speech recognition error', event.error);
     };
 
+    // This is the key change to handle mobile browser behavior.
     recognition.onend = () => {
-      setIsListening(false);
+      // If recognition ends but it wasn't a manual stop, restart it.
+      // This creates a continuous listening experience until the user explicitly stops it.
+      if (!isStoppingRef.current) {
+        if (recognitionRef.current) {
+            try {
+                recognitionRef.current.start();
+            } catch(e) {
+                console.error("Could not restart speech recognition", e);
+                setIsListening(false);
+            }
+        }
+      } else {
+        // This was a manual stop, so we ensure the state is correctly set to not listening.
+        setIsListening(false);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -89,6 +115,8 @@ export const useSpeechRecognition = () => {
     if (recognitionRef.current && !isListening) {
       setTranscript('');
       setError(null);
+      // Reset the stopping flag before starting.
+      isStoppingRef.current = false;
       recognitionRef.current.start();
       setIsListening(true);
     }
@@ -96,7 +124,11 @@ export const useSpeechRecognition = () => {
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current && isListening) {
+      // Set the flag to indicate a manual stop.
+      isStoppingRef.current = true;
       recognitionRef.current.stop();
+      // Set listening to false immediately for a responsive UI.
+      // The `onend` handler will see the ref and not restart.
       setIsListening(false);
     }
   }, [isListening]);
